@@ -1,0 +1,42 @@
+---
+- hosts: all
+  become: true
+  remote_user: ubuntu
+  
+  vars:
+    _user: myadmin
+
+  tasks:
+    - name: Create a login user
+      user:
+        name: vars['_user']
+        password: $6$RwZHbL597Q9Qrj$CO1XLcO7ugD47tJEL3AYcZ4xOYPYpEPownZQkOVpBzLvWRcsY8AZ4AkmVatrf6G6aFyojaz4Nybs6dDJGaIAg/ #pass:123456
+        groups: [adm, audio, cdrom, dialout, dip, floppy, lxd, netdev, plugdev, sudo, video]
+        state: present
+        shell: /bin/bash
+        system: no
+        createhome: yes
+        home: /home/vars['_user']
+
+    - name: put pubkey #if you need to put your public_key to your server use this task
+      lineinfile:
+        state: present
+        path: "/home/{{vars['_user']}}/.ssh/authorized_keys"
+        line: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL4EH6GftY1idA+XBSftgJV1LfDVPBoC+TXn2ICaFtsh keivan@thin01"
+        create: yes
+
+    - name: Add user myadmin to sudo
+      lineinfile:
+        path: /etc/sudoers.d/vars['_user']
+        line: 'myadmin ALL=(ALL) NOPASSWD: ALL'
+        state: present
+        mode: 0440
+        create: yes
+        validate: 'visudo -cf %s'
+
+    - name: Set includedir in sudoers #required if MAAS cloud-init not used
+      lineinfile:
+        dest: /etc/sudoers
+        line: "#includedir /etc/sudoers.d"
+        state: present
+        validate: "/usr/sbin/visudo -cf %s"
